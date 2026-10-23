@@ -140,4 +140,4 @@ Calico or Cilium). The HPA needs metrics-server.
 5. **Dead-letter queue**: publish a malformed message to `retailflow.events` with routing key `order.created` from the RabbitMQ UI. It ends up in `billing.orders.dlq`, and the `MessagesInDeadLetterQueue` alert fires.
 6. **Logging**: in Grafana, type the demo's `X-Request-ID` into "Search logs" to see that request in every service's log.
 
-More detail: [docs/architecture.md](docs/architecture.md).
+More detail: [docs/services.md](docs/services.md) (each service explained) and [docs/architecture.md](docs/architecture.md).
