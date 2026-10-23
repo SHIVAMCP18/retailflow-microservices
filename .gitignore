@@ -6,3 +6,5 @@ obj/
 __pycache__/
 *.pyc
 k8s/.generated/
+!.env.example
+dist/
