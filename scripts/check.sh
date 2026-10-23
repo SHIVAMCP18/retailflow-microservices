@@ -39,7 +39,7 @@ for svc in consul rabbitmq kong debezium product-db customer-db order-db notific
     *) bad "$svc running" "$(echo "$line" | cut -d' ' -f2-)" ;;
   esac
 done
-for job in secrets-init rabbitmq-init; do
+for job in secrets-init rabbitmq-init order-db-init; do
   echo "$ps_out" | grep "^$job " | grep -q "Exited (0)" && ok "$job finished" || bad "$job finished" "check: docker compose logs $job"
 done
 

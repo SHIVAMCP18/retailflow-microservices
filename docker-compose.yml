@@ -43,6 +43,18 @@ services:
     depends_on: { rabbitmq: { condition: service_healthy } }
     networks: [retailflow]
 
+  order-db-init:   # creates the orders schema and the order_app / debezium users (idempotent)
+    image: mysql:8.0
+    entrypoint: ["bash", "/init/01-order-schema.sh"]
+    environment:
+      MYSQL_HOST: order-db
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_ORDER_PASSWORD: ${MYSQL_ORDER_PASSWORD}
+      MYSQL_DEBEZIUM_PASSWORD: ${MYSQL_DEBEZIUM_PASSWORD}
+    volumes: ["./infra/mysql:/init:ro"]
+    depends_on: { order-db: { condition: service_healthy } }
+    networks: [retailflow]
+
   # ---------------------------------------------------------- infrastructure
   consul:
     <<: *service
@@ -114,7 +126,7 @@ services:
       - ./infra/debezium/application.properties:/debezium/conf/application.properties:ro
       - debezium-data:/debezium/data
     depends_on:
-      order-db: { condition: service_healthy }
+      order-db-init: { condition: service_completed_successfully }
       rabbitmq-init: { condition: service_completed_successfully }
 
   mailpit:   # fake SMTP server with a web inbox for the e-mail notifications
@@ -155,9 +167,7 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_ORDER_PASSWORD: ${MYSQL_ORDER_PASSWORD}
       MYSQL_DEBEZIUM_PASSWORD: ${MYSQL_DEBEZIUM_PASSWORD}
-    volumes:
-      - order-data:/var/lib/mysql
-      - ./infra/mysql:/docker-entrypoint-initdb.d:ro
+    volumes: ["order-data:/var/lib/mysql"]
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
       interval: 5s
@@ -219,7 +229,7 @@ services:
       RABBITMQ_APP_PASSWORD: ${RABBITMQ_APP_PASSWORD}
     volumes: [*public-key]
     depends_on:
-      order-db: { condition: service_healthy }
+      order-db-init: { condition: service_completed_successfully }
       rabbitmq-init: { condition: service_completed_successfully }
       secrets-init: { condition: service_completed_successfully }
       consul: { condition: service_healthy }

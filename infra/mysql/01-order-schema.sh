@@ -1,10 +1,12 @@
 #!/bin/bash
-# MySQL first-start script (docker-entrypoint-initdb.d / Kubernetes ConfigMap).
-# Order Service owns this database. The schema lives with the database, not in
-# the application, so Debezium can start streaming before Order Service boots.
-set -euo pipefail
+# Creates the Order Service schema and database users. Safe to run repeatedly.
+# Docker Compose runs it from the one-off "order-db-init" container (MYSQL_HOST=order-db);
+# Kubernetes runs it as a MySQL first-start script (docker-entrypoint-initdb.d).
+# The schema lives with the database, not in the application, so Debezium can
+# start streaming before Order Service boots.
+set -eo pipefail
 
-mysql -uroot -p"$MYSQL_ROOT_PASSWORD" <<SQL
+mysql -h"${MYSQL_HOST:-localhost}" -uroot -p"$MYSQL_ROOT_PASSWORD" <<SQL
 CREATE DATABASE IF NOT EXISTS orders;
 USE orders;
 
@@ -71,9 +73,11 @@ CREATE TABLE IF NOT EXISTS order_view (
 
 -- ===== Least-privilege accounts =====
 CREATE USER IF NOT EXISTS 'order_app'@'%' IDENTIFIED BY '${MYSQL_ORDER_PASSWORD}';
+ALTER USER 'order_app'@'%' IDENTIFIED BY '${MYSQL_ORDER_PASSWORD}';
 GRANT SELECT, INSERT, UPDATE, DELETE ON orders.* TO 'order_app'@'%';
 
 CREATE USER IF NOT EXISTS 'debezium'@'%' IDENTIFIED BY '${MYSQL_DEBEZIUM_PASSWORD}';
+ALTER USER 'debezium'@'%' IDENTIFIED BY '${MYSQL_DEBEZIUM_PASSWORD}';
 GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'debezium'@'%';
 FLUSH PRIVILEGES;
 SQL
